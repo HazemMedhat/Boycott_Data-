@@ -136,7 +136,7 @@ replaceBoycottItems([Item|Rest], [NewItem|UpdatedRest]) :-
 %10-Given an username and order ID, calculate the price of the order after replacing all boycott items by its alternative (if it exists).
 calcPriceAfterReplacingBoycottItemsFromAnOrder(CustomerName, OrderID, NewList, TotalPrice):-
    replaceBoycottItemsFromAnOrder(CustomerName, OrderID, NewList),
-   calculateOrderPrice(NewList, TotalPrice).
+   calculateOrderPrice(NewList,Â TotalPrice).
 
 %------------------------------------------------------------------------------%
 %11-calculate the difference in price between the boycott item and its alternative.
@@ -144,7 +144,7 @@ getTheDifferenceInPriceBetweenItemAndAlternative(ItemName, Alternative, DiffPric
    alternative(ItemName, Alternative),
    item(ItemName,_,Price1),
    item(Alternative,_,Price2),
-   DiffPrice is Price1 - Price2.
+   DiffPrice is Price1Â -Â Price2.
 
 %------------------------------------------------------------------------------%
 %12-Insert/Remove (1)item, (2)alternative and (3)new boycott company to/from the knowledge base. Hint: use assert to insert new fact and retract to remove a fact
