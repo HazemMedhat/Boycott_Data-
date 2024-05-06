@@ -1,0 +1,175 @@
+:- consult(data).
+
+%1-List all orders of a specific customer (as a list).
+members(X, [X|_]).
+members(X, [_|Tail]):-
+members(X, Tail).
+
+% Predicate to collect orders for a customer
+list_orders(CustomerName, OrderList) :-
+    collect_orders(CustomerName, [], OrderList).
+
+collect_orders(CustomerName, Acc, OrderList) :-
+    order_for_customer(CustomerName, Order),
+    \+ members(Order, Acc),
+    !,
+    collect_orders(CustomerName, [Order|Acc], OrderList).
+collect_orders(_, Acc, Acc).
+
+% Predicate to find orders for a customer
+order_for_customer(CustomerName, order(CustomerID, OrderID, Items)) :-
+    customer(CustomerID, CustomerName),
+    order(CustomerID, OrderID, Items).
+
+list_orders(_, OrdersList, OrdersList).
+
+%------------------------------------------------------------------------------%
+
+%2-Get the number of orders of a specific customer given customer id.
+countOrdersOfCustomer(CustomerName, Count) :-
+    list_orders(CustomerName, Orders),
+    count_orders(Orders, 0, Count).
+
+count_orders([], Acc, Acc).
+count_orders([_|Tail], Acc, Count) :-
+    NewAcc is Acc + 1,
+    count_orders(Tail, NewAcc, Count).
+
+%------------------------------------------------------------------------------%
+
+%3-List all items in a specific customer order given customer id and order id.
+getItemsInOrderById(CustomerName,OrderID,Items):-
+    customer(CustomerID,CustomerName),
+    order(CustomerID,OrderID,Items),
+    !.
+
+%------------------------------------------------------------------------------%
+
+%4-Get the num of items in a specific customer order given customer Name and order id.
+
+% Predicate to get the number of items in a specific customer order by name
+getNumOfItems(CustomerName, OrderID, Count) :-
+    getItemsInOrderById(CustomerName,OrderID,Items),
+    countItems(Items, Count).
+
+% Predicate to count items in a list
+countItems([], 0).
+countItems([_|T], Count) :-
+    countItems(T, SubCount),
+    Count is SubCount + 1.
+
+%------------------------------------------------------------------------------%
+%5-Calculate the price of a given order given Customer Name and order id.
+
+% Predicate to calculate the total price of an order
+calcPriceOfOrder(CustomerName, OrderID, TotalPrice) :-
+    getItemsInOrderById(CustomerName,OrderID,Items),
+    calculateOrderPrice(Items, TotalPrice).
+
+% Predicate to calculate the total price of a list of items
+calculateOrderPrice([], 0).
+calculateOrderPrice([Item|Rest], TotalPrice) :-
+    item(Item, _, Price),
+    calculateOrderPrice(Rest, RestPrice),
+    TotalPrice is Price + RestPrice.
+
+%------------------------------------------------------------------------------%
+%6-Given the item name or company name, determine whether we need to boycott or not.
+
+% Predicate to check if an item should be boycotted
+isBoycott(ItemName) :-
+    alternative(ItemName, _),
+    !.
+
+% Predicate to check if a company should be boycotted
+isBoycott(CompanyName) :-
+    boycott_company(CompanyName, _),
+    !.
+
+%------------------------------------------------------------------------------%
+%7-Given the company name or an item name, find the justification why you need to boycott this company/item.
+
+% Predicate to find the justification for boycotting a company or item
+whyToBoycott(CompanyName, Justification) :-
+    boycott_company(CompanyName, Justification),
+    !.
+
+whyToBoycott(ItemName, Justification) :-
+    item(ItemName, CompanyName , _),
+    whyToBoycott(CompanyName, Justification),
+    !.
+
+%------------------------------------------------------------------------------%
+%8-Given an username and order ID, remove all the boycott items from this order.
+
+removeBoycottItemsFromAnOrder(CustomerName, OrderID, NewList) :-
+    getItemsInOrderById(CustomerName,OrderID,Items),
+    removeBoycottItems(Items, NewList).
+
+removeBoycottItems([], []).
+removeBoycottItems([Item|Rest], NewList) :-
+    (   isBoycott(Item)
+    ->  removeBoycottItems(Rest, NewList)
+    ;   NewList = [Item|RestNew],
+        removeBoycottItems(Rest, RestNew)
+    ).
+
+%------------------------------------------------------------------------------%
+%9-Given an username and order ID, update the order such that all boycott items are replaced by an alternative (if exists).
+replaceBoycottItemsFromAnOrder(CustomerName, OrderID, NewList) :-
+    getItemsInOrderById(CustomerName,OrderID,Items),
+    replaceBoycottItems(Items, UpdatedItems),
+    !,
+    NewList = UpdatedItems.
+
+% predicate to replace boycott items with alternatives
+replaceBoycottItems([], []).
+replaceBoycottItems([Item|Rest], [NewItem|UpdatedRest]) :-
+    (   isBoycott(Item)
+    ->  alternative(Item, NewItem),
+        replaceBoycottItems(Rest, UpdatedRest)
+    ;   NewItem = Item,
+        replaceBoycottItems(Rest, UpdatedRest)
+    ).
+
+%------------------------------------------------------------------------------%
+%10-Given an username and order ID, calculate the price of the order after replacing all boycott items by its alternative (if it exists).
+calcPriceAfterReplacingBoycottItemsFromAnOrder(CustomerName, OrderID, NewList, TotalPrice):-
+   replaceBoycottItemsFromAnOrder(CustomerName, OrderID, NewList),
+   calculateOrderPrice(NewList, TotalPrice).
+
+%------------------------------------------------------------------------------%
+%11-calculate the difference in price between the boycott item and its alternative.
+getTheDifferenceInPriceBetweenItemAndAlternative(ItemName, Alternative, DiffPrice):-
+   alternative(ItemName, Alternative),
+   item(ItemName,_,Price1),
+   item(Alternative,_,Price2),
+   DiffPrice is Price1 - Price2.
+
+%------------------------------------------------------------------------------%
+%12-Insert/Remove (1)item, (2)alternative and (3)new boycott company to/from the knowledge base. Hint: use assert to insert new fact and retract to remove a fact
+:- dynamic data:item/3.
+:- dynamic data:alternative/2.
+:- dynamic data:boycott_company/2.
+
+add_item(ItemName, CompanyName, Price):-
+   assert(item(ItemName, CompanyName, Price)).
+
+add_alternative(ItemName, AlternativeItem):-
+   assert(alternative(ItemName, AlternativeItem)).
+
+add_new_boycott(CompanyName, Justification):-
+   assert(boycott_company(CompanyName, Justification)).
+
+remove_item(ItemName, CompanyName, Price):-
+   retract(item(ItemName, CompanyName, Price)).
+
+remove_alternative(ItemName, AlternativeItem):-
+   retract(alternative(ItemName, AlternativeItem)).
+
+remove_new_boycott(CompanyName, Justification):-
+   retract(boycott_company(CompanyName, Justification)).
+
+
+
+
